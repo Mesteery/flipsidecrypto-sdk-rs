@@ -1,0 +1,11 @@
+[package]
+name = "flipside_sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jsonrpsee = { version = "0.24.8", features = ["http-client", "macros"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+
+tokio = "1.44.1"
