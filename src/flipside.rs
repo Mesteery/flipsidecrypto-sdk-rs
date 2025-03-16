@@ -2,10 +2,10 @@ use crate::defaults::{
     API_BASE_URL, DATA_PROVIDER, DATA_SOURCE, MAX_AGE_MINUTES, RETRY_INTERVAL, TIMEOUT, TTL_MINUTES,
 };
 use crate::rpc::{
-    FilterKey, GetQueryRunResultsResult, Pagination, QueryFormat, QueryRun, QueryState, RpcClient,
-    SortBy,
+    CreateQueryRunParams, FilterKey, GetQueryRunResultsParams, GetQueryRunResultsResult,
+    Pagination, QueryFormat, QueryRun, QueryRunIdParams, QueryState, RpcClient, SortBy,
 };
-use jsonrpsee::core::ClientError;
+pub use jsonrpsee::core::ClientError;
 use jsonrpsee::http_client::{HeaderMap, HttpClient, HttpClientBuilder};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -83,7 +83,9 @@ impl Flipside {
         loop {
             let res = self
                 .0
-                .get_query_run(query_run_id.clone())
+                .get_query_run(QueryRunIdParams {
+                    query_run_id: query_run_id.clone(),
+                })
                 .await
                 .map_err(QueryRunError::RpcError)?;
 
@@ -124,27 +126,30 @@ impl Flipside {
 
         Ok(self
             .0
-            .create_query_run(
-                max_age_minutes.min(TTL_MINUTES) / 60,
+            .create_query_run(CreateQueryRunParams {
+                result_ttl_hours: max_age_minutes.max(TTL_MINUTES) / 60,
                 max_age_minutes,
-                query.sql,
-                HashMap::new(),
-                query.data_source.unwrap_or(DATA_SOURCE.to_string()),
-                query.data_provider.unwrap_or(DATA_PROVIDER.to_string()),
-            )
+                sql: query.sql,
+                tags: HashMap::with_capacity(0),
+                data_source: query.data_source.unwrap_or(DATA_SOURCE.to_string()),
+                data_provider: query.data_provider.unwrap_or(DATA_PROVIDER.to_string()),
+            })
             .await?
             .query_run)
     }
 
     pub async fn get_query_run(&self, query_run_id: String) -> Result<QueryRun, ClientError> {
-        let res = self.0.get_query_run(query_run_id).await?;
+        let res = self
+            .0
+            .get_query_run(QueryRunIdParams { query_run_id })
+            .await?;
         Ok(res.redirected_to_query_run.unwrap_or(res.query_run))
     }
 
-    pub async fn cancel_query_run(&self, query_run_id: &str) -> Result<QueryRun, ClientError> {
+    pub async fn cancel_query_run(&self, query_run_id: String) -> Result<QueryRun, ClientError> {
         Ok(self
             .0
-            .cancel_query_run(query_run_id.to_string())
+            .cancel_query_run(QueryRunIdParams { query_run_id })
             .await?
             .canceled_query_run)
     }
@@ -153,24 +158,27 @@ impl Flipside {
         &self,
         query_run_id: String,
         page: Option<Pagination>,
-        filters: Option<Vec<HashMap<FilterKey, String>>>,
-        sort_by: Option<Vec<SortBy>>,
+        filters: Vec<HashMap<FilterKey, String>>,
+        sort_by: Vec<SortBy>,
     ) -> Result<GetQueryRunResultsResult, ClientError> {
-        let res = self.0.get_query_run(query_run_id).await?;
+        let res = self
+            .0
+            .get_query_run(QueryRunIdParams { query_run_id })
+            .await?;
 
         let query_run = res.redirected_to_query_run.unwrap_or(res.query_run);
 
         self.0
-            .get_query_run_results(
-                query_run.id,
-                QueryFormat::Csv,
+            .get_query_run_results(GetQueryRunResultsParams {
+                query_run_id: query_run.id,
+                format: QueryFormat::Csv,
                 sort_by,
                 filters,
-                Some(page.unwrap_or(Pagination {
+                page: Some(page.unwrap_or(Pagination {
                     number: 1,
                     size: 100000,
                 })),
-            )
+            })
             .await
     }
 }
