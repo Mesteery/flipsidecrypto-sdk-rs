@@ -10,6 +10,7 @@ use jsonrpsee::http_client::{HeaderMap, HttpClient, HttpClientBuilder};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+#[derive(Debug, Clone, Default)]
 pub struct Query {
     /// SQL query to execute
     sql: String,
@@ -54,51 +55,14 @@ impl Flipside {
         ))
     }
 
-    fn get_timeout(&self, query: &Query) -> Duration {
-        query.timeout.unwrap_or(TIMEOUT)
-    }
-
-    fn get_retry_interval_seconds(&self, query: &Query) -> Duration {
-        query.retry_interval_seconds.unwrap_or(RETRY_INTERVAL)
-    }
-
-    #[inline]
-    fn get_max_age_minutes(&self, query: &Query) -> u64 {
-        if query.cached == Some(false) {
-            return 0;
-        }
-        query.max_age_minutes.unwrap_or(MAX_AGE_MINUTES)
-    }
-
-    #[inline]
-    fn get_ttl_hours(&self, query: &Query) -> u64 {
-        let max_age_minutes = self.get_max_age_minutes(query);
-        (if max_age_minutes > 60 {
-            max_age_minutes
-        } else {
-            TTL_MINUTES
-        }) / 60
-    }
-
     pub async fn run(&self, query: Query) -> Result<QueryRun, QueryRunError> {
-        let ttl_hours = self.get_ttl_hours(&query);
-        let max_age_minutes = self.get_max_age_minutes(&query);
-        let retry_interval = self.get_retry_interval_seconds(&query);
-        let timeout = self.get_timeout(&query);
+        let retry_interval = query.retry_interval_seconds.unwrap_or(RETRY_INTERVAL);
+        let timeout = query.timeout.unwrap_or(TIMEOUT);
 
         let mut query_run = self
-            .0
-            .create_query_run(
-                ttl_hours,
-                max_age_minutes,
-                query.sql,
-                HashMap::new(),
-                query.data_source.unwrap_or(DATA_SOURCE.to_string()),
-                query.data_provider.unwrap_or(DATA_PROVIDER.to_string()),
-            )
+            .create_query_run(query)
             .await
-            .map_err(QueryRunError::RpcError)?
-            .query_run;
+            .map_err(QueryRunError::RpcError)?;
 
         let query_run_id = query_run.id;
 
@@ -141,11 +105,17 @@ impl Flipside {
     }
 
     pub async fn create_query_run(&self, query: Query) -> Result<QueryRun, ClientError> {
+        let max_age_minutes = if query.cached == Some(false) {
+            0
+        } else {
+            query.max_age_minutes.unwrap_or(MAX_AGE_MINUTES)
+        };
+
         Ok(self
             .0
             .create_query_run(
-                self.get_ttl_hours(&query),
-                self.get_max_age_minutes(&query),
+                max_age_minutes.min(TTL_MINUTES) / 60,
+                max_age_minutes,
                 query.sql,
                 HashMap::new(),
                 query.data_source.unwrap_or(DATA_SOURCE.to_string()),
