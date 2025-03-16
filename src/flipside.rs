@@ -13,19 +13,28 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone, Default)]
 pub struct Query {
     /// SQL query to execute
-    sql: String,
+    pub sql: String,
     /// the maximum age of the query results in minutes you will accept, defaults to zero
-    max_age_minutes: Option<u64>,
+    pub max_age_minutes: Option<u64>,
     /// An override on the cache. A value of true will reexecute the query.
-    cached: Option<bool>,
+    pub cached: Option<bool>,
     /// The number of minutes until your query times out
-    timeout: Option<Duration>,
+    pub timeout: Option<Duration>,
     /// The number of seconds to use between retries
-    retry_interval_seconds: Option<Duration>,
+    pub retry_interval_seconds: Option<Duration>,
     /// The data source to execute the query against
-    data_source: Option<String>,
+    pub data_source: Option<String>,
     /// The owner of the data source
-    data_provider: Option<String>,
+    pub data_provider: Option<String>,
+}
+
+impl Query {
+    pub fn new(sql: String) -> Self {
+        Self {
+            sql,
+            ..Default::default()
+        }
+    }
 }
 
 pub struct ExecutionError {
