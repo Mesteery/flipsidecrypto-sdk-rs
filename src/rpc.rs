@@ -163,9 +163,9 @@ pub trait Rpc {
     #[method(name = "getQueryRunResults")]
     async fn get_query_run_results(
         &self,
-        query_run_id: String,
+        queryRunId: String,
         format: QueryFormat,
-        sort_by: Option<Vec<SortBy>>,
+        sortBy: Option<Vec<SortBy>>,
         filters: Option<Vec<HashMap<FilterKey, String>>>,
         page: Option<Pagination>,
     ) -> RpcResult<GetQueryRunResultsResult>;
@@ -173,17 +173,17 @@ pub trait Rpc {
     #[method(name = "createQueryRun")]
     async fn create_query_run(
         &self,
-        result_ttl_hours: u64,
-        max_age_minutes: u64,
+        resultTTLHours: u64,
+        maxAgeMinutes: u64,
         sql: String,
         tags: HashMap<String, String>,
-        data_source: String,
-        data_provider: String,
+        dataSource: String,
+        dataProvider: String,
     ) -> RpcResult<CreateQueryRunResult>;
 
     #[method(name = "getQueryRun")]
-    async fn get_query_run(&self, query_run_id: String) -> RpcResult<GetQueryRunResult>;
+    async fn get_query_run(&self, queryRunId: String) -> RpcResult<GetQueryRunResult>;
 
     #[method(name = "cancelQueryRun")]
-    async fn cancel_query_run(&self, query_run_id: String) -> RpcResult<CancelQueryRunResult>;
+    async fn cancel_query_run(&self, queryRunId: String) -> RpcResult<CancelQueryRunResult>;
 }

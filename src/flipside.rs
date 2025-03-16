@@ -37,12 +37,14 @@ impl Query {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ExecutionError {
     pub name: String,
     pub message: String,
     pub data: String,
 }
 
+#[derive(Debug)]
 pub enum QueryRunError {
     RpcError(ClientError),
     Timeout(Duration),
@@ -151,8 +153,8 @@ impl Flipside {
         &self,
         query_run_id: String,
         page: Option<Pagination>,
-        filters: Vec<HashMap<FilterKey, String>>,
-        sort_by: Vec<SortBy>,
+        filters: Option<Vec<HashMap<FilterKey, String>>>,
+        sort_by: Option<Vec<SortBy>>,
     ) -> Result<GetQueryRunResultsResult, ClientError> {
         let res = self.0.get_query_run(query_run_id).await?;
 
@@ -162,8 +164,8 @@ impl Flipside {
             .get_query_run_results(
                 query_run.id,
                 QueryFormat::Csv,
-                Some(sort_by),
-                Some(filters),
+                sort_by,
+                filters,
                 Some(page.unwrap_or(Pagination {
                     number: 1,
                     size: 100000,
