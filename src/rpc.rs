@@ -95,7 +95,7 @@ pub struct SqlStatement {
     pub id: String,
     pub statement_hash: String,
     pub sql: String,
-    pub column_metadata: ColumnMetadata,
+    pub column_metadata: Option<ColumnMetadata>,
     pub user_id: String,
     pub tags: HashMap<String, Option<String>>,
     pub created_at: String,
